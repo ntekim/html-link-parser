@@ -1,9 +1,9 @@
 package api
 
 import (
-	"fmt"
 	"golang.org/x/net/html"
 	"io"
+	"strings"
 )
 
 // Link represent a link <a href=""  /> in an html document
@@ -19,12 +19,46 @@ func Parse(r io.Reader) ([]Link, error) {
 		return nil, err
 	}
 	nodes := LinkNodes(doc)
+	var links []Link
 	for _, node := range nodes {
-		fmt.Println(node)
+		links = append(links, buildLinks(node))
 	}
 
-	//dfs(doc, "")
-	return nil, nil
+	return links, nil
+}
+
+func getText(n *html.Node) string {
+	if n.Type == html.TextNode {
+		return n.Data
+	}
+
+	if n.Type == html.CommentNode {
+		return ""
+	}
+
+	if n.Type != html.ElementNode {
+		return ""
+	}
+
+	var ret string
+	for c := n.FirstChild; c != nil; c = c.NextSibling {
+		ret += getText(c) + " "
+	}
+
+	return strings.Join(strings.Fields(ret), " ")
+}
+
+func buildLinks(n *html.Node) Link {
+	var ret Link
+	for _, attr := range n.Attr {
+		if attr.Key == "href" {
+			ret.Href = attr.Val
+			break
+		}
+	}
+	ret.Text = getText(n)
+
+	return ret
 }
 
 func LinkNodes(n *html.Node) []*html.Node {
